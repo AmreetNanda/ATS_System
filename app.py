@@ -8,6 +8,8 @@ from PIL import Image
 import pdf2image
 import PyPDF2
 
+import json
+
 import os
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
 
@@ -31,6 +33,50 @@ def input_pdf_text(uploaded_file):
         text += page.extract_text() or ""
     return text
 
+def display_card_layout(data):
+    st.markdown("""
+        <style>
+        .card {
+            background-color: #3b2d29;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #e0e0e0;
+        }
+        .title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .keyword {
+            display: inline-block;
+            background-color: #e3f2fd;
+            color: #0d47a1;
+            padding: 6px 12px;
+            margin: 4px;
+            border-radius: 8px;
+            font-size: 14px;
+            border: 1px solid #90caf9;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class="card">
+        <div class="title">🟩 JD Match</div>
+        <p style="font-size:28px; font-weight:bold;">{data['JD match']}</p>
+    </div>
+
+    <div class="card">
+        <div class="title">🟨 Missing Keywords</div>
+        {''.join([f'<span class="keyword">{kw}</span>' for kw in data['missingkeywords']])}
+    </div>
+
+    <div class="card">
+        <div class="title">🟦 Profile Summary</div>
+        <p>{data['Profile Summary']}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Create a streamlit app
 st.set_page_config(page_title="ATS Resume Expert")
@@ -66,7 +112,13 @@ if submit:
             final_prompt
         )
 
-        st.subheader(response)
+        # st.subheader(response)
+        clean = response.replace("```json", "").replace("```", "")
+        data = json.loads(clean)
+        display_card_layout(data)
+
     else:
         st.warning("Please upload a PDF file.")
+
+
 
