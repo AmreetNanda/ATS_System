@@ -1,0 +1,9 @@
+langchain
+langchain_community
+langchain-core
+langchain-classic
+ipykernel
+streamlit
+python-dotenv
+PyPDF2
+pdf2image
