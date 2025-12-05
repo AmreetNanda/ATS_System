@@ -13,6 +13,7 @@ import io
 from PIL import Image
 import pdf2image
 import PyPDF2
+import pytesseract
 
 import json
 
@@ -34,22 +35,30 @@ def get_model_response(input_text, pdf_content, prompt):
 # Using PDF2Image (PDF to Image method)
 def input_pdf_setup(uploaded_file):
     if uploaded_file is not None:
-        images = pdf2image.convert_from_bytes(uploaded_file.read(),poppler_path=r"C://Program Files (x86)//poppler-25.12.0//Library//bin")
+        # Convert PDF pages to images
+        images = pdf2image.convert_from_bytes(
+            uploaded_file.read(),
+            poppler_path=r"C://Program Files (x86)//poppler-25.12.0//Library//bin"
+        )
+        
+        # Take first page for display
         first_page = images[0]
 
+        # Convert to byte array for display
         img_byte_arr = io.BytesIO()
         first_page.save(img_byte_arr, format='JPEG')
         img_byte_arr = img_byte_arr.getvalue()
+        pdf_image_for_display = base64.b64encode(img_byte_arr).decode()
 
-        pdf_parts = [
-            {
-                "mime-type":"image/jpeg",
-                "data" : base64.b64encode(img_byte_arr).decode()
-            }
-        ]
-        return pdf_parts
+        # OCR the entire PDF to extract text
+        full_text = ""
+        for img in images:
+            text = pytesseract.image_to_string(img)
+            full_text += text + "\n"
+
+        return full_text, pdf_image_for_display
     else:
-        return FileNotFoundError("No file uploaded")
+        raise FileNotFoundError("No file uploaded")
 
 def display_card_layout(data):
     st.markdown("""
@@ -121,19 +130,21 @@ submit1 = st.button("Tell me about the resume")
 submit2 = st.button("Percentage match [Accept / Reject]")
 if submit1:
     if uploaded_file is not None:
-        resume_text = input_pdf_setup(uploaded_file)
-        final_prompt = input_prompt1.format(text=resume_text, jd=input_text)
+        resume_text, pdf_image = input_pdf_setup(uploaded_file)
+        st.image(pdf_image, caption="First page of resume")
         st.subheader("The response is ...")
-        response = get_model_response(input_text,resume_text,final_prompt)
+        final_prompt = input_prompt1.format(text=resume_text, jd=input_text)
+        response = get_model_response(input_text, resume_text, final_prompt)
         st.write(response)
     else:
         st.write("Please upload the resume")
 elif submit2:
     if uploaded_file is not None:
-        resume_text = input_pdf_setup(uploaded_file)
-        final_prompt = input_prompt1.format(text=resume_text, jd=input_text)
+        resume_text, pdf_image = input_pdf_setup(uploaded_file)
+        st.image(pdf_image, caption="First page of resume")
         st.subheader("The response is ...")
-        response = get_model_response(input_text,resume_text,final_prompt)
+        final_prompt = input_prompt2.format(text=resume_text, jd=input_text)
+        response = get_model_response(input_text, resume_text, final_prompt)
         st.write(response)
     else:
         st.write("Please upload the resume")
@@ -141,19 +152,11 @@ elif submit2:
 submit3 = st.button("Submit")
 if submit3:
     if uploaded_file is not None:
-        resume_text = input_pdf_setup(uploaded_file)
-
-        final_prompt = input_prompt3.format(
-            text=resume_text,
-            jd=input_text
-        )
-
-        response = get_model_response(
-            input_text,
-            resume_text,
-            final_prompt
-        )
-
+        resume_text, pdf_image = input_pdf_setup(uploaded_file)
+        st.image(pdf_image, caption="First page of resume")
+        final_prompt = input_prompt1.format(text=resume_text, jd=input_text)
+        response = get_model_response(input_text, resume_text, final_prompt)
+        # st.write(response)
         # st.subheader(response)
         clean = response.replace("```json", "").replace("```", "")
         data = json.loads(clean)
